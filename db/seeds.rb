@@ -8,8 +8,12 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 
+# Clear existing data
+Task.destroy_all
+User.destroy_all
 
-user = User.create(
+# Create demo user
+user = User.create!(
   email: "user@example.com",
   password: "password",
   password_confirmation: "password"

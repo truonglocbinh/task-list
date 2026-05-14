@@ -9,10 +9,21 @@ Install docker before start.
 
 2. **Create and setup the database** (in a new terminal):
    ```bash
-   docker-compose exec web bundle exec rails db:create db:migrate db:seed
+   # First time setup
+   docker-compose exec web bundle exec rails db:setup
+   
+   # Or if database already exists
+   docker-compose exec web bundle exec rails db:reset
    ```
 
 3. **Access the application:**
    - Open your browser to http://localhost:3000
 
 Can test with account user@example.com/password
+
+**To completely reset (removes all data):**
+```bash
+docker-compose down -v  # Remove volumes
+docker-compose up -d
+docker-compose exec web bundle exec rails db:setup
+```
