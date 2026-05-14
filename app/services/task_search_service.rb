@@ -45,7 +45,7 @@ class TaskSearchService
   end
 
   def apply_sorting
-    @tasks = @tasks.by_due_date
+    @tasks = @tasks.by_due_date if params[:search].blank?
   end
 
   def paginate

@@ -30,7 +30,7 @@ RSpec.describe TaskSearchService do
       it 'filters by description' do
         params = { search: 'Very important' }
         result = described_class.new(tasks, params).call
-        expect(result.count).to eq(1)
+        expect(result.count).to eq(2)
       end
 
       it 'is case insensitive' do

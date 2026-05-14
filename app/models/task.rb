@@ -30,9 +30,26 @@ class Task < ApplicationRecord
   scope :overdue, -> { where("due_at < ? AND completed_at IS NULL", Time.current) }
 
   # Search scopes
+  # Full-text search using PostgreSQL trigram similarity
   scope :search_text, ->(query) {
     return all if query.blank?
-    where("title ILIKE ? OR description ILIKE ?", "%#{query}%", "%#{query}%")
+    sanitized_query = sanitize_sql_like(query)
+
+    # Using trigram similarity for fuzzy matching and relevance ranking
+    # similarity() returns 0-1, where 1 is exact match
+    where(
+      "title ILIKE :pattern OR description ILIKE :pattern OR
+       similarity(title, :query) > 0.1 OR similarity(description, :query) > 0.1",
+      pattern: "%#{sanitized_query}%",
+      query: query
+    ).order(
+      Arel.sql(
+        "GREATEST(
+          similarity(title, #{connection.quote(query)}),
+          similarity(description, #{connection.quote(query)})
+        ) DESC"
+      )
+    )
   }
 
   scope :by_status, ->(status) {
