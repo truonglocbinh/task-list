@@ -109,9 +109,7 @@
 
     <!-- Mobile Card View -->
     <div class="d-md-none">
-      <% @tasks.each do |task| %>
-        <%= render 'task_mobile', task: task %>
-      <% end %>
+      <%= render partial: 'task_mobile', collection: @tasks, as: :task %>
     </div>
 
     <!-- Pagination -->
