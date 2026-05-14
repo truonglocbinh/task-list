@@ -1,0 +1,22 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-gradient shadow-sm">
+  <div class="container-fluid">
+    <%= link_to root_path, class: "navbar-brand d-flex align-items-center" do %>
+      <i class="bi bi-check2-square fs-4 me-2"></i>
+      <span class="fw-bold">Task Management</span>
+    <% end %>
+    
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-white-50 me-2 d-none d-md-inline">
+        <i class="bi bi-person-circle"></i> <%= current_user.email %>
+      </span>
+      <%= link_to edit_user_registration_path, class: "btn btn-outline-light btn-sm" do %>
+        <i class="bi bi-gear"></i>
+        <span class="d-none d-md-inline ms-1">Settings</span>
+      <% end %>
+      <%= button_to destroy_user_session_path, method: :delete, data: { turbo_method: :delete }, class: "btn btn-light btn-sm" do %>
+        <i class="bi bi-box-arrow-right"></i>
+        <span class="d-none d-md-inline ms-1">Logout</span>
+      <% end %>
+    </div>
+  </div>
+</nav>

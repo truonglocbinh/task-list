@@ -1,0 +1,7 @@
+<%= turbo_stream.replace dom_id(@task) do %>
+  <%= render @task %>
+<% end %>
+
+<%= turbo_stream.replace "#{dom_id(@task)}_mobile" do %>
+  <%= render 'task_mobile', task: @task %>
+<% end %>

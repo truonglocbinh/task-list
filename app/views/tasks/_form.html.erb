@@ -1,0 +1,233 @@
+<%= form_with(model: task, local: true, class: "needs-validation") do |form| %>
+  <% if task.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(task.errors.count, "error") %> prohibited this task from being saved:</h4>
+      <ul class="mb-0">
+        <% task.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :title, class: "form-label" %>
+    <%= form.text_field :title, class: "form-control", required: true %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :description, class: "form-label" %>
+    <%= form.text_area :description, rows: 4, class: "form-control" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :due_at, "Due Date & Time", class: "form-label" %>
+    <%= form.datetime_local_field :due_at, class: "form-control" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :attachments, "Attachments", class: "form-label" %>
+    <%= form.file_field :attachments, multiple: true, class: "form-control", 
+        id: "task_attachments_input",
+        accept: "image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt" %>
+    <small class="text-muted">
+      You can upload up to 10 files (images, PDFs, Word, Excel, text files). 
+      Max size: 10MB per file.
+    </small>
+    
+    <% if task.persisted? && task.attachments.any? %>
+      <div class="mt-3">
+        <h6>Current Attachments:</h6>
+        <div class="list-group" id="current-attachments-list">
+          <% task.attachments.each do |attachment| %>
+            <div class="list-group-item d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2" 
+                 data-attachment-id="<%= attachment.id %>">
+              <div class="d-flex align-items-center gap-2 flex-grow-1 overflow-hidden" style="min-width: 0; max-width: 100%;">
+                <i class="bi bi-paperclip text-primary flex-shrink-0"></i>
+                <div class="overflow-hidden file-container">
+                  <%= link_to rails_blob_path(attachment, disposition: "attachment"), 
+                      class: "text-decoration-none fw-semibold d-block text-truncate", 
+                      target: "_blank",
+                      style: "max-width: 93%;",
+                      title: attachment.filename.to_s do %>
+                    <%= attachment.filename %>
+                  <% end %>
+                  <small class="text-muted"><%= number_to_human_size(attachment.byte_size) %></small>
+                </div>
+              </div>
+              <button type="button" 
+                      class="btn btn-sm btn-outline-danger flex-shrink-0 remove-attachment-btn"
+                      data-attachment-id="<%= attachment.id %>"
+                      onclick="markAttachmentForRemoval(this, <%= attachment.id %>)">
+                Remove
+              </button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div id="file-preview" class="mt-3" style="display: none;">
+      <h6>Selected Files:</h6>
+      <div class="list-group" id="file-preview-list"></div>
+    </div>
+
+    <!-- Hidden fields for attachments to remove -->
+    <div id="remove-attachments-container"></div>
+  </div>
+
+  <script>
+    // Mark attachment for removal (only when form is submitted)
+    function markAttachmentForRemoval(button, attachmentId) {
+      const attachmentItem = button.closest('[data-attachment-id]');
+      const container = document.getElementById('remove-attachments-container');
+      
+      if (button.textContent.trim() === 'Remove') {
+        // Mark for removal
+        attachmentItem.style.opacity = '0.5';
+        attachmentItem.style.textDecoration = 'line-through';
+        button.textContent = 'Undo';
+        button.classList.remove('btn-outline-danger');
+        button.classList.add('btn-outline-secondary');
+        
+        // Add hidden field
+        const hiddenField = document.createElement('input');
+        hiddenField.type = 'hidden';
+        hiddenField.name = 'task[remove_attachments][]';
+        hiddenField.value = attachmentId;
+        hiddenField.id = `remove-attachment-${attachmentId}`;
+        container.appendChild(hiddenField);
+      } else {
+        // Undo removal
+        attachmentItem.style.opacity = '1';
+        attachmentItem.style.textDecoration = 'none';
+        button.textContent = 'Remove';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-outline-danger');
+        
+        // Remove hidden field
+        const hiddenField = document.getElementById(`remove-attachment-${attachmentId}`);
+        if (hiddenField) {
+          hiddenField.remove();
+        }
+      }
+    }
+
+    function initializeFilePreview() {
+      const fileInput = document.getElementById('task_attachments_input');
+      const filePreview = document.getElementById('file-preview');
+      const filePreviewList = document.getElementById('file-preview-list');
+      
+      if (!fileInput) return;
+      
+      // Store accumulated files
+      let accumulatedFiles = [];
+      
+      // Remove existing listener if any
+      fileInput.removeEventListener('change', handleFileChange);
+      fileInput.addEventListener('change', handleFileChange);
+      
+      function handleFileChange(e) {
+        // Get newly selected files
+        const newFiles = Array.from(e.target.files);
+        
+        // Add new files to accumulated list (avoid duplicates by name)
+        newFiles.forEach(newFile => {
+          const exists = accumulatedFiles.some(f => f.name === newFile.name && f.size === newFile.size);
+          if (!exists) {
+            accumulatedFiles.push(newFile);
+          }
+        });
+        
+        // Update the file input with all accumulated files
+        const dt = new DataTransfer();
+        accumulatedFiles.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
+        
+        // Update the preview
+        updatePreview();
+      }
+      
+      function updatePreview() {
+        filePreviewList.innerHTML = '';
+        
+        if (accumulatedFiles.length > 0) {
+          filePreview.style.display = 'block';
+          
+          accumulatedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2';
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'd-flex align-items-center gap-2 flex-grow-1 overflow-hidden';
+            fileInfo.style.minWidth = '0';
+            fileInfo.style.maxWidth = '100%';
+            
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-file-earmark text-primary flex-shrink-0';
+            
+            const details = document.createElement('div');
+            details.className = 'overflow-hidden';
+            details.style.minWidth = '0';
+            details.style.maxWidth = '100%';
+            details.style.textAlign = 'left';
+            details.innerHTML = `
+              <span class="fw-semibold d-block text-truncate" style="max-width: 93%;" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+              <small class="text-muted">${formatFileSize(file.size)}</small>
+            `;
+            
+            fileInfo.appendChild(icon);
+            fileInfo.appendChild(details);
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-sm btn-outline-danger flex-shrink-0';
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = function() {
+              removeFile(index);
+            };
+            
+            item.appendChild(fileInfo);
+            item.appendChild(removeBtn);
+            filePreviewList.appendChild(item);
+          });
+        } else {
+          filePreview.style.display = 'none';
+        }
+      }
+      
+      function removeFile(index) {
+        accumulatedFiles.splice(index, 1);
+        
+        const dt = new DataTransfer();
+        accumulatedFiles.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
+        
+        updatePreview();
+      }
+      
+      function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+      }
+      
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    }
+    
+    // Initialize on both DOMContentLoaded and Turbo load
+    document.addEventListener('DOMContentLoaded', initializeFilePreview);
+    document.addEventListener('turbo:load', initializeFilePreview);
+  </script>
+
+  <div class="d-flex gap-2">
+    <%= form.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", tasks_path, class: "btn btn-secondary" %>
+  </div>
+<% end %>
